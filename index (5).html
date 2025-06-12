@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estación de Radioaficionados Virtual</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Simulador completo de estación de radioaficionados">
+    <meta name="theme-color" content="#21808D">
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiRXN0YWNpw7NuIGRlIFJhZGlvYWZpY2lvbmFkb3MgVmlydHVhbCIsInNob3J0X25hbWUiOiJSYWRpb0hhbSIsInN0YXJ0X3VybCI6Ii4vIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzFGMjEyMSIsInRoZW1lX2NvbG9yIjoiIzIxODA4RCIsImljb25zIjpbeyJzcmMiOiJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFBITjJaeUIzYVdSMGFEMGlNVEk0SWlCb1pXbG5hSFE5SWpFeU9DSWdkbWxsZDBodmVEMGlNQ0F3SURFME5DQXhORFFpSUdacGJHdzlJaU5ETWpnNE0yUWlQaUE4Y21WamRDQjNhV1IwYUQwaU1USTRJaUJvWldsbmFIUTlJakV5T0NJZ1ptbHNiRDBpSXpJeE9EQTRSQ0l2UGp3dmMzWm5QUT09IiwidHlwZSI6ImltYWdlL3N2Zyt4bWwiLCJzaXplcyI6IjEyOHgxMjgifV19">
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Leaflet CSS for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+    <div class="ham-radio-app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="station-info">
+                    <h1>EA7HAM</h1>
+                    <span class="utc-time" id="utcTime">00:00:00 UTC</span>
+                </div>
+                <div class="header-controls">
+                    <button class="btn btn--sm theme-toggle" id="themeToggle">🌙</button>
+                    <div class="status status--success" id="connectionStatus">Online</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Navigation -->
+        <nav class="main-nav">
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-tab="transceiver">Transceptor</button>
+                <button class="nav-tab" data-tab="digital">Digital</button>
+                <button class="nav-tab" data-tab="repeaters">Repetidores</button>
+                <button class="nav-tab" data-tab="logbook">Logbook</button>
+                <button class="nav-tab" data-tab="voip">VoIP</button>
+                <button class="nav-tab" data-tab="tools">Herramientas</button>
+                <button class="nav-tab" data-tab="config">Config</button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Transceiver Module -->
+            <section class="module active" id="transceiver">
+                <div class="transceiver-panel">
+                    <div class="display-section">
+                        <div class="main-display">
+                            <div class="frequency-display">
+                                <div class="vfo-labels">
+                                    <span class="vfo-label active">VFO-A</span>
+                                    <span class="vfo-label">VFO-B</span>
+                                </div>
+                                <div class="frequency" id="frequency">14.074.000</div>
+                                <div class="mode-info">
+                                    <span class="mode" id="mode">FT8</span>
+                                    <span class="band" id="band">20m</span>
+                                    <span class="power" id="power">100W</span>
+                                </div>
+                            </div>
+                            <div class="meters">
+                                <div class="s-meter">
+                                    <label>S</label>
+                                    <div class="meter-bar">
+                                        <div class="meter-fill" id="sMeter"></div>
+                                    </div>
+                                </div>
+                                <div class="swr-meter">
+                                    <label>SWR</label>
+                                    <div class="meter-bar">
+                                        <div class="meter-fill" id="swrMeter" style="width: 15%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Waterfall Display -->
+                        <div class="waterfall-container">
+                            <canvas id="waterfallCanvas" width="600" height="200"></canvas>
+                            <div class="waterfall-controls">
+                                <label>Ganancia: <input type="range" id="waterfallGain" min="1" max="10" value="5"></label>
+                                <label>Velocidad: <input type="range" id="waterfallSpeed" min="1" max="5" value="3"></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="controls-section">
+                        <div class="band-controls">
+                            <div class="band-buttons">
+                                <button class="band-btn" data-band="160m">160m</button>
+                                <button class="band-btn" data-band="80m">80m</button>
+                                <button class="band-btn active" data-band="40m">40m</button>
+                                <button class="band-btn" data-band="30m">30m</button>
+                                <button class="band-btn" data-band="20m">20m</button>
+                                <button class="band-btn" data-band="17m">17m</button>
+                                <button class="band-btn" data-band="15m">15m</button>
+                                <button class="band-btn" data-band="12m">12m</button>
+                                <button class="band-btn" data-band="10m">10m</button>
+                            </div>
+                        </div>
+
+                        <div class="mode-controls">
+                            <div class="mode-buttons">
+                                <button class="mode-btn" data-mode="CW">CW</button>
+                                <button class="mode-btn active" data-mode="SSB">SSB</button>
+                                <button class="mode-btn" data-mode="FM">FM</button>
+                                <button class="mode-btn" data-mode="FT8">FT8</button>
+                                <button class="mode-btn" data-mode="PSK31">PSK31</button>
+                            </div>
+                        </div>
+
+                        <div class="rotary-controls">
+                            <div class="control-knob">
+                                <label>VFO</label>
+                                <div class="knob" id="vfoKnob" data-value="0">
+                                    <div class="knob-pointer"></div>
+                                </div>
+                            </div>
+                            <div class="control-knob">
+                                <label>Vol</label>
+                                <div class="knob" id="volumeKnob" data-value="50">
+                                    <div class="knob-pointer"></div>
+                                </div>
+                            </div>
+                            <div class="control-knob">
+                                <label>SQL</label>
+                                <div class="knob" id="squelchKnob" data-value="25">
+                                    <div class="knob-pointer"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="memory-controls">
+                            <div class="memory-buttons">
+                                <button class="memory-btn">M1</button>
+                                <button class="memory-btn">M2</button>
+                                <button class="memory-btn">M3</button>
+                                <button class="memory-btn">M4</button>
+                                <button class="memory-btn">M5</button>
+                            </div>
+                        </div>
+
+                        <div class="ptt-section">
+                            <button class="ptt-button" id="pttButton">
+                                <span>PTT</span>
+                                <div class="ptt-ring"></div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Digital Modes Module -->
+            <section class="module" id="digital">
+                <div class="digital-panel">
+                    <div class="digital-tabs">
+                        <button class="digital-tab active" data-digital="ft8">FT8/FT4</button>
+                        <button class="digital-tab" data-digital="psk31">PSK31</button>
+                        <button class="digital-tab" data-digital="rtty">RTTY</button>
+                    </div>
+
+                    <div class="digital-content">
+                        <div class="digital-mode active" id="ft8-content">
+                            <div class="ft8-controls">
+                                <select id="ft8Band" class="form-control">
+                                    <option value="80m">80m - 3573.0 kHz</option>
+                                    <option value="40m">40m - 7074.0 kHz</option>
+                                    <option value="30m">30m - 10136.0 kHz</option>
+                                    <option value="20m" selected>20m - 14074.0 kHz</option>
+                                    <option value="17m">17m - 18100.0 kHz</option>
+                                    <option value="15m">15m - 21074.0 kHz</option>
+                                    <option value="12m">12m - 24915.0 kHz</option>
+                                    <option value="10m">10m - 28074.0 kHz</option>
+                                </select>
+                                <button class="btn btn--primary" id="ft8AutoSeq">Auto Seq</button>
+                                <div class="ft8-time" id="ft8Time">00:00</div>
+                            </div>
+                            <div class="ft8-messages" id="ft8Messages">
+                                <div class="message-header">
+                                    <span>Tiempo</span>
+                                    <span>dB</span>
+                                    <span>DT</span>
+                                    <span>Freq</span>
+                                    <span>Mensaje</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="digital-mode" id="psk31-content">
+                            <div class="psk31-terminal" id="psk31Terminal">
+                                <div class="terminal-output">PSK31 Terminal listo...\n</div>
+                                <input type="text" class="terminal-input" placeholder="Escriba su mensaje...">
+                            </div>
+                        </div>
+
+                        <div class="digital-mode" id="rtty-content">
+                            <div class="rtty-controls">
+                                <select class="form-control">
+                                    <option>45.45 Bd</option>
+                                    <option>50 Bd</option>
+                                </select>
+                                <select class="form-control">
+                                    <option>170 Hz shift</option>
+                                    <option>200 Hz shift</option>
+                                </select>
+                            </div>
+                            <div class="rtty-terminal">
+                                <textarea class="form-control" rows="15" placeholder="Terminal RTTY..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Repeaters Module -->
+            <section class="module" id="repeaters">
+                <div class="repeaters-panel">
+                    <div class="repeaters-sidebar">
+                        <div class="repeater-filters">
+                            <h3>Filtros</h3>
+                            <div class="form-group">
+                                <label class="form-label">Banda</label>
+                                <select class="form-control" id="bandFilter">
+                                    <option value="">Todas</option>
+                                    <option value="2m">2m (VHF)</option>
+                                    <option value="70cm">70cm (UHF)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Modo</label>
+                                <select class="form-control" id="modeFilter">
+                                    <option value="">Todos</option>
+                                    <option value="FM">FM</option>
+                                    <option value="DMR">DMR</option>
+                                    <option value="D-STAR">D-STAR</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="repeater-list" id="repeaterList">
+                            <!-- Lista de repetidores se carga dinámicamente -->
+                        </div>
+                    </div>
+
+                    <div class="repeaters-map">
+                        <div id="map" style="height: 500px; width: 100%;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Logbook Module -->
+            <section class="module" id="logbook">
+                <div class="logbook-panel">
+                    <div class="logbook-form">
+                        <h3>Nueva Entrada QSO</h3>
+                        <form id="qsoForm" class="qso-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Indicativo</label>
+                                    <input type="text" class="form-control" id="callsign" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Fecha/Hora UTC</label>
+                                    <input type="datetime-local" class="form-control" id="qsoDateTime" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Frecuencia (kHz)</label>
+                                    <input type="number" class="form-control" id="qsoFreq" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Modo</label>
+                                    <select class="form-control" id="qsoMode">
+                                        <option>SSB</option>
+                                        <option>CW</option>
+                                        <option>FT8</option>
+                                        <option>PSK31</option>
+                                        <option>FM</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">RST TX</label>
+                                    <input type="text" class="form-control" id="rstTx" value="59">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">RST RX</label>
+                                    <input type="text" class="form-control" id="rstRx" value="59">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Nombre</label>
+                                    <input type="text" class="form-control" id="qsoName">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">QTH</label>
+                                    <input type="text" class="form-control" id="qsoQth">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Comentarios</label>
+                                <textarea class="form-control" id="qsoComments" rows="3"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn--primary">Guardar QSO</button>
+                        </form>
+                    </div>
+
+                    <div class="logbook-entries">
+                        <h3>Contactos Recientes</h3>
+                        <div class="logbook-stats" id="logbookStats">
+                            <div class="stat-item">
+                                <span class="stat-value">0</span>
+                                <span class="stat-label">QSOs Total</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">0</span>
+                                <span class="stat-label">Países</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">0</span>
+                                <span class="stat-label">Bandas</span>
+                            </div>
+                        </div>
+                        <div class="logbook-table" id="logbookTable">
+                            <!-- Tabla de QSOs se carga dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VoIP Module -->
+            <section class="module" id="voip">
+                <div class="voip-panel">
+                    <div class="voip-rooms">
+                        <h3>Salas Disponibles</h3>
+                        <div class="room-list" id="roomList">
+                            <!-- Lista de salas se carga dinámicamente -->
+                        </div>
+                    </div>
+
+                    <div class="voip-controls">
+                        <div class="audio-controls">
+                            <div class="volume-control">
+                                <label>Volumen Micrófono</label>
+                                <input type="range" id="micVolume" min="0" max="100" value="50">
+                            </div>
+                            <div class="volume-control">
+                                <label>Volumen Altavoz</label>
+                                <input type="range" id="speakerVolume" min="0" max="100" value="75">
+                            </div>
+                        </div>
+
+                        <div class="ptt-control">
+                            <button class="btn btn--primary btn--lg" id="voipPtt">
+                                <span>🎤 PTT</span>
+                            </button>
+                        </div>
+
+                        <div class="connected-users" id="connectedUsers">
+                            <h4>Usuarios Conectados</h4>
+                            <div class="user-list">
+                                <!-- Lista de usuarios se carga dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tools Module -->
+            <section class="module" id="tools">
+                <div class="tools-panel">
+                    <div class="tool-tabs">
+                        <button class="tool-tab active" data-tool="antenna">Antenas</button>
+                        <button class="tool-tab" data-tool="coords">Coordenadas</button>
+                        <button class="tool-tab" data-tool="propagation">Propagación</button>
+                        <button class="tool-tab" data-tool="frequencies">Frecuencias</button>
+                    </div>
+
+                    <div class="tool-content">
+                        <div class="tool active" id="antenna-tool">
+                            <h3>Calculadora de Antenas</h3>
+                            <div class="form-group">
+                                <label class="form-label">Frecuencia (MHz)</label>
+                                <input type="number" class="form-control" id="antennaFreq" step="0.1">
+                            </div>
+                            <div class="antenna-results" id="antennaResults">
+                                <!-- Resultados se muestran dinámicamente -->
+                            </div>
+                        </div>
+
+                        <div class="tool" id="coords-tool">
+                            <h3>Conversor de Coordenadas</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Latitud</label>
+                                    <input type="number" class="form-control" id="latitude" step="0.000001">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Longitud</label>
+                                    <input type="number" class="form-control" id="longitude" step="0.000001">
+                                </div>
+                            </div>
+                            <button class="btn btn--primary" id="convertCoords">Convertir</button>
+                            <div class="coords-result" id="coordsResult">
+                                <!-- Resultado se muestra dinámicamente -->
+                            </div>
+                        </div>
+
+                        <div class="tool" id="propagation-tool">
+                            <h3>Calculadora de Propagación</h3>
+                            <!-- Herramientas de propagación básicas -->
+                        </div>
+
+                        <div class="tool" id="frequencies-tool">
+                            <h3>Tabla de Frecuencias</h3>
+                            <div class="frequency-table" id="frequencyTable">
+                                <!-- Tabla de bandas se carga dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Configuration Module -->
+            <section class="module" id="config">
+                <div class="config-panel">
+                    <h3>Configuración de la Estación</h3>
+                    <form id="configForm">
+                        <div class="form-group">
+                            <label class="form-label">Indicativo</label>
+                            <input type="text" class="form-control" id="stationCall" value="EA7HAM">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-control" id="stationName">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">QTH (Ubicación)</label>
+                            <input type="text" class="form-control" id="stationQth">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Maidenhead Locator</label>
+                            <input type="text" class="form-control" id="stationLocator">
+                        </div>
+                        <button type="submit" class="btn btn--primary">Guardar Configuración</button>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
